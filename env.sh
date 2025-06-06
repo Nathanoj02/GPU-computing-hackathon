@@ -1,7 +1,7 @@
 ## !! PLEASE MODIFY THE VALUE OF "GROUP_NAME"
 ## Write here the name of your group
 ## Please use the name you submitted in the registration form  
-export GROUP_NAME="test_group"
+export GROUP_NAME="CoreDumpers"
 ## !!
 
 RED='\033[0;31m'
