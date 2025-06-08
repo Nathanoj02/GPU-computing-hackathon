@@ -1,5 +1,7 @@
 #include "utils.cuh"
 
+#define ROWS_PER_THREAD 2
+
 // Kernel
 __global__ void bfs_kernel_spmv(
     const uint32_t* row_offsets,      // CSR row offsets
@@ -56,6 +58,77 @@ __global__ void bfs_kernel_spmv(
   
 }
 
+// Kernel
+__global__ void bfs_kernel_row_spmv(
+    const uint32_t* row_offsets,      // CSR row offsets
+    const uint32_t* col_indices,      // CSR column indices (neighbors)
+    int* distances,                   // Output distances array
+    const uint32_t* frontier,         // Current frontier
+    uint32_t* next_frontier,          // Next frontier to populate
+    uint32_t N,                       // Rows of the matrix (number of nodes)
+    uint32_t current_level,           // BFS level (depth)
+    bool *one_modified
+) {
+    // = Row index (indica il nodo della frontier su cui stiamo lavorando, cioè il potenziale neighbor)
+    uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    //check se il mio thread non mi serve
+    if (tid >= CEILING(N, ROWS_PER_THREAD)) return;
+
+    uint32_t computed_tid = tid * ROWS_PER_THREAD;
+
+    // Check prima per ogni riga che esegue il mio thread, considerando l'ultimo thread che potrebbe andare out of memory
+    for(uint32_t i = 0; i < ROWS_PER_THREAD && computed_tid + i <= N; i++)
+        if (distances[computed_tid + i] != -1) {
+            return;
+    }
+
+    uint32_t row_start = row_offsets[computed_tid];
+    uint32_t row_end;
+    if(computed_tid + ROWS_PER_THREAD > N)
+        row_end = row_offsets[computed_tid + (N % ROWS_PER_THREAD) - 1];
+    else{
+        row_end = row_offsets[tid * (ROWS_PER_THREAD + 1)];
+    }
+
+    // Spmv CSR modificata (evita gli 0 nel vettore)
+    bool p = false;
+    bool new_row = true;
+    uint32_t column;
+    uint32_t frontier_value;
+    // for(uint32_t offset = 0; offset < ROWS_PER_THREAD && computed_tid + offset <= N; offset++){
+    for (uint32_t i = row_start; i < row_end; i++) {
+        if(new_row){
+            column = col_indices[i];
+            frontier_value = frontier[column];
+            //non posso fare break, devo gestire con una flag che finchè non cambio riga non aumento il computed_tid
+            if (frontier_value > 0) {
+                p = true;
+            }
+        }
+        
+
+        // Assegna la profondità e aggiungi alla frontiera
+        if (p) {
+            //set the right tid to modify, se row_offset[i] != row_offset[i + 1];
+            
+            distances[computed_tid] = current_level + 1;
+
+            // Atomically add the neighbor to the next frontier
+            // uint32_t index = atomicAdd(next_frontier_size, 1);
+            next_frontier[computed_tid] = 1;
+            new_row = false;
+            p = false;
+            // Set one modified true
+            *one_modified = true;
+        }
+
+        if(i < row_end - 1 && row_offsets[i] != row_offsets[i + 1]){
+            computed_tid++;
+            new_row = true;
+        }
+    }
+  
+}
 
 // CPU call
 void gpu_bfs_spmv(
@@ -121,11 +194,28 @@ void gpu_bfs_spmv(
     // Reset counter for next frontier
     CHECK_CUDA(cudaMemset(d_one_modified, false, sizeof(bool)));
 
+    // uint32_t block_size = 1024;
+    // uint32_t num_blocks = ceil(N / (float) block_size);
+
+    // // CUDA_TIMER_INIT(BFS_kernel)
+    // bfs_kernel_spmv<<<num_blocks, block_size>>>(
+    //     d_row_offsets,
+    //     d_col_indices,
+    //     d_distances,
+    //     d_frontier,
+    //     d_next_frontier,
+    //     N,
+    //     level,
+    //     d_one_modified
+    // );
+
+
     uint32_t block_size = 1024;
-    uint32_t num_blocks = ceil(N / (float) block_size);
+    uint32_t num_blocks = ceil((N / ROWS_PER_THREAD) / (float) block_size);
 
     // CUDA_TIMER_INIT(BFS_kernel)
-    bfs_kernel_spmv<<<num_blocks, block_size>>>(
+    //TO DO: modify the number of threads to launch
+    bfs_kernel_row_spmv<<<num_blocks, block_size>>>(
         d_row_offsets,
         d_col_indices,
         d_distances,
