@@ -1,6 +1,8 @@
 #ifndef TRANSPOSE_H_
 #define TRANSPOSE_H_
 
+#include <cusparse.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>  // for std::memset

@@ -20,10 +20,9 @@
 #include "../include/cli.hpp"
 #include "../include/mt19937-64.hpp"
 #include "../include/bfs_baseline.cuh"
-#include "../include/bfs_bottom_up.cuh"
 #include "../include/bfs_spmv.cuh"
 #include "../include/matrix.cuh"
-#include "../include/bfs_hybrid.cuh"
+#include "../include/bfs_bitmap.cuh"
 
 void gpu_bfs(
   const uint32_t N,           // Number of veritices
@@ -41,11 +40,11 @@ void gpu_bfs(
   // !! This is just a placeholder !!
   // gpu_bfs_baseline(N, M, h_rowptr, h_colidx, source, h_distances, true);
 
-  // Convert to CSC (could be a read instead of CSR, so don't count in the time)
-  // uint32_t *col_offset = (uint32_t *) malloc ((N+1) * sizeof(uint32_t)); 
-  // uint32_t *row_indices = (uint32_t *) malloc ((M) * sizeof(uint32_t)); 
+  // Convert to CSC (could be a read, so don't count in the time)
+  uint32_t *col_offset = (uint32_t *) malloc ((N+1) * sizeof(uint32_t)); 
+  uint32_t *row_indices = (uint32_t *) malloc ((M) * sizeof(uint32_t)); 
 
-  // csr_to_csc(N, M, h_rowptr, h_colidx, col_offset, row_indices);
+  csr_to_csc(N, M, h_rowptr, h_colidx, col_offset, row_indices);
   // Now col_offset = row_offset in the transposed matrix, and same for row_indices = col_indices
 
   // !! This is an example of how to keep track of runtime. Make sure to include everything. !!
@@ -64,7 +63,8 @@ void gpu_bfs(
   // <<< kernel >>>
   // gpu_bfs_hybrid(N, M, h_rowptr, h_colidx, source, h_distances, false);
   // gpu_bfs_spmv(N, M, col_offset, row_indices, source, h_distances, false);
-  gpu_bfs_hybrid_chat(N, M, h_rowptr, h_colidx, source, h_distances, false);
+  // gpu_bfs_hybrid_chat(N, M, h_rowptr, h_colidx, source, h_distances, false);
+  gpu_bfs_bitmap(N, M, h_rowptr, h_colidx, col_offset, row_indices, source, h_distances, false);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   CPU_TIMER_STOP(BFS)
