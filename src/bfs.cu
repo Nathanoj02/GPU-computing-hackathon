@@ -19,7 +19,7 @@
 #include "../include/utils.cuh"
 #include "../include/cli.hpp"
 #include "../include/mt19937-64.hpp"
-#include "../include/bfs_baseline.cuh"
+#include "../include/bfs_baseline_shared.cuh"
 
 void gpu_bfs(
   const uint32_t N,           // Number of veritices
@@ -34,23 +34,22 @@ void gpu_bfs(
    * Feel free to structure you code (i.e. create other files, macros etc.)
    * *********************/
 
-  // !! This is just a placeholder !!
-  gpu_bfs_baseline(N, M, h_rowptr, h_colidx, source, h_distances, true);
 
   // !! This is an example of how to keep track of runtime. Make sure to include everything. !!
-  /* float tot_time = 0.0f;
+  float tot_time = 0.0f;
   CPU_TIMER_INIT(BFS_preprocess)
 
-  <<< preprocess >>>
+  // <<< preprocess >>>
 
-  CHECK_CUDA(cudaDeviceSynchronize());
+  // CHECK_CUDA(cudaDeviceSynchronize());
   CPU_TIMER_STOP(BFS_preprocess)
   tot_time += CPU_TIMER_ELAPSED(BFS_preprocess);
   CPU_TIMER_PRINT(BFS_preprocess)
 
   CPU_TIMER_INIT(BFS)
 
-  <<< kernel >>>
+  // <<< kernel >>>
+  gpu_bfs_shared_baseline(N, M, h_rowptr, h_colidx, source, h_distances, false);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   CPU_TIMER_STOP(BFS)
@@ -59,15 +58,15 @@ void gpu_bfs(
 
   CPU_TIMER_INIT(BFS_postprocess)
 
-  <<< postprocess >>>
+  // <<< postprocess >>>
 
-  CHECK_CUDA(cudaDeviceSynchronize());
+  // CHECK_CUDA(cudaDeviceSynchronize());
   CPU_TIMER_STOP(BFS_postprocess)
   tot_time += CPU_TIMER_ELAPSED(BFS_postprocess);
   CPU_TIMER_PRINT(BFS_postprocess)
 
   // This output format is MANDATORY, DO NOT CHANGE IT
-  printf("\n[OUT] Total BFS time: %f ms\n" RESET, tot_time); */
+  printf("\n[OUT] Total BFS time: %f ms\n" RESET, tot_time);
 }
 
 int main(int argc, char **argv) {
